@@ -1,5 +1,5 @@
 // 모듈 호출
-var http = require('http'); 
+var http = require('http');
 var fs = require('fs');
 var url = require('url');
 var qs = require('querystring');
@@ -11,7 +11,7 @@ var sanitizeHtml = require('sanitize-html');
 // response : 응답할 때 보내는 정보
 // 브라우저에 들어올 때 마다 보냄
 var app = http.createServer(function (request, response) {
-    
+
     var _url = request.url; // 요청한 url
     var queryData = url.parse(_url, true).query; // url에 보낸 데이터
     var pathname = url.parse(_url, true).pathname; // url 주소
@@ -79,7 +79,7 @@ var app = http.createServer(function (request, response) {
             var post = qs.parse(body);
             var title = post.title;
             var description = post.description
-            
+
             // 사용자가 쓴 내용을 파일로 저장함
             fs.writeFile(`data/${title}.txt`, description, 'utf8', function (err) {
                 response.writeHead(302, {
@@ -140,9 +140,7 @@ var app = http.createServer(function (request, response) {
             console.log(post);
             // 사용자가 쓴 내용을 파일로 저장함
         });
-    } 
-    else if(pathname === "/delete_process")
-    {
+    } else if (pathname === "/delete_process") {
         var body = '';
         // 정보 수신 받을 때 마다 실행 됨
         request.on('data', function (data) {
@@ -153,7 +151,7 @@ var app = http.createServer(function (request, response) {
             var post = qs.parse(body);
             var id = post.id;
             var filterID = path.parse(id).base;
-            fs.unlink(`data/${filterID}`, function(error){
+            fs.unlink(`data/${filterID}`, function (error) {
                 response.writeHead(302, {
                     Location: `/`
                 }); // 홈으로 리 다이렉션
@@ -161,8 +159,7 @@ var app = http.createServer(function (request, response) {
             });
             // 사용자가 쓴 내용을 파일로 저장함
         });
-    }
-    else {
+    } else {
         response.writeHead(404); // 파일을 찾을 수 없음
         response.end("Not Found");
     }
