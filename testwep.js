@@ -6,6 +6,17 @@ var qs = require('querystring');
 var template = require('./lib/template');
 var path = require('path');
 var sanitizeHtml = require('sanitize-html');
+var mysql = require('mysql');
+
+// mysql db 커넥트
+var db = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '1234',
+    database: 'test'
+});
+db.connect();
+
 
 // requst : 요청할 때 보내는 정보
 // response : 응답할 때 보내는 정보
@@ -20,26 +31,36 @@ var app = http.createServer(function (request, response) {
     if (pathname === '/') {
         // 홈 화면
         if (title === undefined) {
-            fs.readdir('./data', function (error, filelist) {
+            db.query('select * from test_table', function (error, topic, fields) {
+                if (error) {
+                    throw error;
+                }
                 title = "Welcome";
                 var data = "Hello, Node.js";
-
-                var list = template.list(filelist);
+                var list = template.list(topic);
                 var html = template.html(title, list, `<h2>${title}</h2>${data}`,
                     `<a href = "/create">create</a>`);
+
+                console.log(topic);
                 response.writeHead(200); // 성공적으로 전송됨
                 response.end(html);
             });
+
         } else {
-            // data 폴더에 있는 파일 배열을 filelist에 저장
-            fs.readdir('./data', function (error, filelist) {
-                // data 폴더에 있는 파일 읽어서 data 변수에 저장 
-                var filterID = path.parse(title).base;
-                fs.readFile(`data/${filterID}`, 'utf8', function (err, data) {
-                    var list = template.list(filelist);
+            db.query(`select * from test_table`, function (error, topic, fields) {
+                if (error) {
+                    throw error;
+                }
+                var list = template.list(topic);
+                db.query(`select * from test_table where id = ${title}`, function (error, topic, fields) {
+                    if (error) {
+                        throw error;
+                    }
+                    title = topic[0].title;
+                    var data = topic[0].description;
                     var html = template.html(title, list, `<h2>${title}</h2>${data}`,
                         `<a href = "/create">create</a> 
-                        <a href = "/update?id=${title}">update</a>
+                        <a href = "/update?id=${topic[0].id}">update</a>
                         <form action = "delete_process" method="post">
                             <input type = "hidden" name = "id" value = "${title}">
                             <input type = "submit" value = "delete">
@@ -50,11 +71,14 @@ var app = http.createServer(function (request, response) {
             });
         }
     } else if (pathname === "/create") {
-        fs.readdir('./data', function (error, filelist) {
+        db.query(`select * from test_table`, function (error, topic, fields) {
+            if (error) {
+                throw error;
+            }
             title = "Web - create";
-            var list = template.list(filelist);
+            var list = template.list(topic);
             var html = template.html(title, list,
-                `
+            `
                 <form action="/create_process" method="POST"> <!-- 데이터를 서버로 보낼 때는 post로-->
                 <p><input type="text" name = "title" placeholder = "title"></p>
                 <p>
@@ -64,10 +88,12 @@ var app = http.createServer(function (request, response) {
                     <input type="submit">
                 </p>
                 </form>
-            `, ``);
+            `, 
+            `<a href = "/create">create</a>`);
             response.writeHead(200); // 성공적으로 전송됨
             response.end(html);
         });
+
     } else if (pathname === "/create_process") {
         var body = '';
         // 정보 수신 받을 때 마다 실행 됨
@@ -80,38 +106,41 @@ var app = http.createServer(function (request, response) {
             var title = post.title;
             var description = post.description
 
-            // 사용자가 쓴 내용을 파일로 저장함
-            fs.writeFile(`data/${title}.txt`, description, 'utf8', function (err) {
-                response.writeHead(302, {
-                    Location: `/?id=${title}`
-                }); // 리 다이렉션
+            db.query(`
+                INSERT INTO test_table (title, description) 
+                VALUES(?, ?);`, [title, description], 
+                function (error, result) {
+                if (error) {
+                    throw error;
+                }
+                response.writeHead(302, {Location: `/?id=${result.insertId}`}); // 리 다이렉션
                 response.end("good");
             });
         });
     } else if (pathname === "/update") {
-        // data 폴더에 있는 파일 배열을 filelist에 저장
-        fs.readdir('./data', function (error, filelist) {
-            // data 폴더에 있는 파일 읽어서 data 변수에 저장    
-            var filterID = path.parse(title);
-            fs.readFile(`data/${filterID}`, 'utf8', function (err, description) {
-                var title = queryData.id;
-                var sanitizeTitle = sanitizeHtml(title);
-                var sanitizedDescription = sanitizeHtml(description);
-                var list = template.list(filelist);
-                var html = template.html(sanitizeTitle, list,
-                    `
+        db.query(`select * from test_table`, function (error, topic, fields) {
+            if (error) {
+                throw error;
+            }
+            var list = template.list(topic);
+            db.query(`select * from test_table where id = ${title}`, function (error, topic, fields) {
+                if (error) {
+                    throw error;
+                }
+                title = topic[0].title;
+                var data = topic[0].description;
+                var html = template.html(title, list, `<h2>${title}</h2>${data}`,
+                    ` 
                     <form action="/update_process" method="POST"> <!-- 데이터를 서버로 보낼 때는 post로-->
-                    <input type="hidden" name = "id" value="${sanitizeTitle}">
-                    <p><input type="text" name = "title" placeholder = "title" value="${sanitizeTitle}"></p>
+                    <input type="hidden" name = "id" value="${topic[0].id}">
+                    <p><input type="text" name = "title" placeholder = "title" value="${title}"></p>
                     <p>
-                        <textarea name="description" placeholder = "description">${sanitizedDescription}</textarea>
+                        <textarea name="description" placeholder = "description">${data}</textarea>
                     </p>
                     <p>
                         <input type="submit">
                     </p>
-                    </form>
-                `,
-                    `<a href = "/create">create</a> <a href = "/update?id=${sanitizeTitle}">update</a>`);
+                    </form>`);
                 response.writeHead(200); // 성공적으로 전송됨
                 response.end(html);
             });
@@ -129,13 +158,15 @@ var app = http.createServer(function (request, response) {
             var title = post.title;
             var description = post.description;
 
-            fs.rename(`data/${id}`, `data/${title}`, function (error) {
-                fs.writeFile(`data/${title}`, description, 'utf8', function (err) {
-                    response.writeHead(302, {
-                        Location: `/?id=${title}`
-                    }); // 리 다이렉션
-                    response.end("good");
-                });
+            db.query(`
+                update test_table set title = ?, description = ? 
+                where (id = ?);`, [title, description, id], 
+                function (error, result) {
+                if (error) {
+                    throw error;
+                }
+                response.writeHead(302, {Location: `/?id=${id}`}); // 리 다이렉션
+                response.end("good");
             });
             console.log(post);
             // 사용자가 쓴 내용을 파일로 저장함
