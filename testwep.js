@@ -17,7 +17,6 @@ var db = mysql.createConnection({
 });
 db.connect();
 
-
 // requst : 요청할 때 보내는 정보
 // response : 응답할 때 보내는 정보
 // 브라우저에 들어올 때 마다 보냄
@@ -62,7 +61,7 @@ var app = http.createServer(function (request, response) {
                         `<a href = "/create">create</a> 
                         <a href = "/update?id=${topic[0].id}">update</a>
                         <form action = "delete_process" method="post">
-                            <input type = "hidden" name = "id" value = "${title}">
+                            <input type = "hidden" name = "id" value = "${topic[0].id}">
                             <input type = "submit" value = "delete">
                         </form>`);
                     response.writeHead(200); // 성공적으로 전송됨
@@ -107,8 +106,8 @@ var app = http.createServer(function (request, response) {
             var description = post.description
 
             db.query(`
-                INSERT INTO test_table (title, description) 
-                VALUES(?, ?);`, [title, description], 
+                INSERT INTO test_table (title, description, author_id) 
+                VALUES(?, ?, ?);`, [title, description, 1], 
                 function (error, result) {
                 if (error) {
                     throw error;
@@ -181,14 +180,13 @@ var app = http.createServer(function (request, response) {
         request.on('end', function () {
             var post = qs.parse(body);
             var id = post.id;
-            var filterID = path.parse(id).base;
-            fs.unlink(`data/${filterID}`, function (error) {
-                response.writeHead(302, {
-                    Location: `/`
-                }); // 홈으로 리 다이렉션
-                response.end();
+            db.query(`delete from test_table where (id = ?);`, [id], function (error, result) {
+                if (error) {
+                    throw error;
+                }
+                response.writeHead(302, {Location: `/`}); // 리 다이렉션
+                response.end("good");
             });
-            // 사용자가 쓴 내용을 파일로 저장함
         });
     } else {
         response.writeHead(404); // 파일을 찾을 수 없음
