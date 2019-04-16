@@ -1,12 +1,12 @@
 // 모듈 호출
-var http = require('http');
-var url = require('url');
 var topic = require('./lib/topic');
 var author = require('./lib/author');
+var bodyParser = require('body-parser');
 
 // express
 const express = require('express'); // 상수화
 const app = express(); // 상수화
+app.use(bodyParser.urlencoded({extended: false}));
 app.get('/', function (request, response) {
     // 홈 화면
     if (request.query.id === undefined)
