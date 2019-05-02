@@ -5,5 +5,7 @@
         "httpOnly": true,
         "path": "/"
     },
-    "__lastAccess": 1556173909096
+    "__lastAccess": 1556175907018,
+    "is_logined": true,
+    "nickname": "doo"
 }
